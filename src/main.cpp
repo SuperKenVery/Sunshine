@@ -243,11 +243,6 @@ int main(int argc, char *argv[]) {
 
   task_pool.start(1);
 
-#if defined SUNSHINE_TRAY && SUNSHINE_TRAY >= 1
-  // create tray thread and detach it
-  system_tray::run_tray();
-#endif
-
   // Create signal handler after logging has been initialized
   auto shutdown_event = mail::man->event<bool>(mail::shutdown);
   on_signal(SIGINT, [&force_shutdown, &display_device_deinit_guard, shutdown_event]() {
@@ -346,18 +341,43 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
-  rtsp_stream::rtpThread();
+  std::thread rtpThread {confighttp::start};
+
+#if defined SUNSHINE_TRAY && SUNSHINE_TRAY >= 1
+  BOOST_LOG(info) << "Starting system tray"sv;
+  system_tray::init_tray();
+#endif
+
+  // main thread event loop until shutdown
+  while (true) {
+    // check for shutdown event
+    bool should_shutdown = shutdown_event->peek();
+
+    if (should_shutdown) {
+      BOOST_LOG(info) << "Shutdown event detected, breaking main loop"sv;
+
+      // stop system tray
+#if defined SUNSHINE_TRAY && SUNSHINE_TRAY >= 1
+      system_tray::end_tray();
+#endif
+
+      break;
+    }
+
+    // Process system tray events
+#if defined SUNSHINE_TRAY && SUNSHINE_TRAY >= 1
+    system_tray::process_tray_events();
+#endif
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+  }
 
   httpThread.join();
   configThread.join();
+  rtpThread.join();
 
   task_pool.stop();
   task_pool.join();
-
-  // stop system tray
-#if defined SUNSHINE_TRAY && SUNSHINE_TRAY >= 1
-  system_tray::end_tray();
-#endif
 
 #ifdef WIN32
   // Restore global NVIDIA control panel settings

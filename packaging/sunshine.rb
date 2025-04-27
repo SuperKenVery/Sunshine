@@ -71,7 +71,6 @@ class @PROJECT_NAME@ < Formula
       -DOPENSSL_ROOT_DIR=#{Formula["openssl"].opt_prefix}
       -DSUNSHINE_ASSETS_DIR=sunshine/assets
       -DSUNSHINE_BUILD_HOMEBREW=ON
-      -DSUNSHINE_ENABLE_TRAY=OFF
       -DSUNSHINE_PUBLISHER_NAME='LizardByte'
       -DSUNSHINE_PUBLISHER_WEBSITE='https://app.lizardbyte.dev'
       -DSUNSHINE_PUBLISHER_ISSUE_URL='https://app.lizardbyte.dev/support'
@@ -106,6 +105,7 @@ class @PROJECT_NAME@ < Formula
     end
 
     args << "-DCUDA_FAIL_ON_MISSING=OFF" if OS.linux?
+    args << "-DSUNSHINE_ENABLE_TRAY=OFF" if OS.linux?  # appindicator is not available through brew
 
     system "cmake", "-S", ".", "-B", "build", *std_cmake_args, *args
 
